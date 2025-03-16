@@ -36,3 +36,34 @@ async function generateInstructions(command) {
     throw new Error("Invalid JSON from LLM");
   }
 }
+
+async function runBrowserAgent(command: string) {
+  console.log("Processing command:", command);
+  const instructions = await generateInstructions(command);
+  console.log("Generated Instructions:", instructions);
+
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  
+
+  for (const step of instructions) {
+    const { action, details } = step;
+    if (action === "navigate") {
+      console.log(`Navigating to ${details}`);
+      await page.goto(details);
+      await page.waitForTimeout(2000);
+    } else if (action === "type") {
+      if (typeof details === "object" && details.selector && details.text) {
+        console.log(
+          `Typing "${details.text}" into element with selector ${details.selector}`
+        );
+        await page.fill(details.selector, details.text);
+        await page.waitForTimeout(1000);
+      } else {
+        console.warn("Invalid details for type action:", details);
+      }
+    }
+  }
+}
